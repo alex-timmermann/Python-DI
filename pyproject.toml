@@ -1,7 +1,7 @@
 [project]
 name = "python-di"
 version = "0.1.0"
-description = "Add your description here"
+description = "Lightweight dependency injection container for Python with automatic constructor wiring and configuration overrides."
 requires-python = ">=3.12"
 dependencies = [
     "pydantic>=2.12.5",
