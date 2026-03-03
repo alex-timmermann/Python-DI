@@ -1,9 +1,9 @@
-from python_di.application import Application
-from python_di.di_container import DIContainer, Dependency
-from python_di.example.services.config_b import ConfigB
+from python_di_application.application import Application
+from python_di_application.di_container import DIContainer, Dependency
+from python_di_application.example.services.config_b import ConfigB
 
-from python_di.example.services.service_a import ServiceA
-from python_di.example.services.service_b import ServiceB
+from python_di_application.example.services.service_a import ServiceA
+from python_di_application.example.services.service_b import ServiceB
 
 
 class ExampleApp(Application):

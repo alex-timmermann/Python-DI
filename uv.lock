@@ -112,7 +112,7 @@ wheels = [
 ]
 
 [[package]]
-name = "python-di"
+name = "python-di-application"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [

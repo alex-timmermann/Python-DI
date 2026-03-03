@@ -2,7 +2,7 @@ import logging
 from abc import ABC, abstractmethod
 from typing import Any
 
-from python_di.di_container import Dependency, DependencyInstance, DIContainer
+from python_di_application.di_container import Dependency, DependencyInstance, DIContainer
 
 
 class Application(ABC):

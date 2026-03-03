@@ -1,4 +1,4 @@
-from python_di.example.services.config_b import ConfigB
+from python_di_application.example.services.config_b import ConfigB
 
 
 class ServiceB:

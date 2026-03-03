@@ -1,4 +1,4 @@
-from python_di.example.services.service_b import ServiceB
+from python_di_application.example.services.service_b import ServiceB
 
 
 class ServiceA:

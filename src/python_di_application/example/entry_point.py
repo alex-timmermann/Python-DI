@@ -1,6 +1,6 @@
-from python_di.di_container import DependencyInstance
-from python_di.example.example_app import ExampleApp
-from python_di.example.services.config_b import ConfigB
+from python_di_application.di_container import DependencyInstance
+from python_di_application.example.example_app import ExampleApp
+from python_di_application.example.services.config_b import ConfigB
 
 
 def main():
