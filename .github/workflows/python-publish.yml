@@ -29,22 +29,22 @@ jobs:
             name: release-dists
             path: dist/
 
-pypi-publish:
-  runs-on: ubuntu-latest
-  needs: [release-build]
-  permissions:
-    id-token: write
-  environment:
-    name: pypi
-    url: https://pypi.org/project/python-di/
-  steps:
-    - name: Retrieve release distributions
-      uses: actions/download-artifact@v4
-      with:
-        name: release-dists
-        path: dist/
-
-    - name: Publish release distributions to PyPI
-      uses: pypa/gh-action-pypi-publish@release/v1
-      with:
-        packages-dir: dist/
+    pypi-publish:
+      runs-on: ubuntu-latest
+      needs: [release-build]
+      permissions:
+        id-token: write
+      environment:
+        name: pypi
+        url: https://pypi.org/project/python-di/
+      steps:
+        - name: Retrieve release distributions
+          uses: actions/download-artifact@v4
+          with:
+            name: release-dists
+            path: dist/
+    
+        - name: Publish release distributions to PyPI
+          uses: pypa/gh-action-pypi-publish@release/v1
+          with:
+            packages-dir: dist/
