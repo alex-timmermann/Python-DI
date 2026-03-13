@@ -3,11 +3,28 @@ import os
 import sys
 import unittest
 from abc import ABC
+from unittest.mock import MagicMock
 
 from pydantic import HttpUrl
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from python_di.di_container import DIContainer, Dependency, DependencyInstance
+from python_di_application.dependency import DependencyInstance, Dependency
+from python_di_application.di_container import DIContainer
+from python_di_application.test_di_container import TestDIContainer
+
+
+class PostInitWrapper:
+    def wrap(self, func):
+        def wrapped():
+            return f"wrapped:{func()}"
+
+        return wrapped
+
+
+class PostInitTestClass:
+    @DIContainer.post_init_wrap(PostInitWrapper.wrap)
+    def value(self) -> str:
+        return "raw"
 
 
 class TestDependencyContainer(unittest.TestCase):
@@ -173,19 +190,19 @@ class TestDependencyContainer(unittest.TestCase):
         class AbstractClass(ABC):
             pass
 
-        class ConcreteA:
+        class A:
             def __init__(self, b: AbstractClass):
                 self._b = b
 
-        class B(AbstractClass):
+        class ConcreteB(AbstractClass):
             pass
 
         container = DIContainer()
         container.register_dependencies(
-            dependencies_types_with_kwargs=[Dependency(B), Dependency(ConcreteA)]
+            dependencies_types_with_kwargs=[Dependency(ConcreteB), Dependency(A)]
         )
-        concrete_a = container[ConcreteA]
-        self.assertIsInstance(concrete_a._b, B)
+        concrete_a = container[A]
+        self.assertIsInstance(concrete_a._b, ConcreteB)
 
     def test_base_settings_injection_with_default(self) -> None:
         class TestSettings(BaseSettings):
@@ -206,7 +223,7 @@ class TestDependencyContainer(unittest.TestCase):
         override_http = HttpUrl("https://override.de")
 
         class TestSettings(BaseSettings):
-            test_setting: HttpUrl = HttpUrl("http://www.test.de")
+            test_setting: HttpUrl = HttpUrl("http://www.test.de")  # NOSONAR
 
         class B:
             def __init__(self, settings: TestSettings):
@@ -246,4 +263,137 @@ class TestDependencyContainer(unittest.TestCase):
         )
         b = container[B]
         self.assertEqual(b._settings.test_setting, override_http)
-        os.environ.clear()
+        os.environ.pop("TEST_TEST_SETTING", None)
+
+    def test_resolve_dependency_returns_singleton_instance(self) -> None:
+        class A:
+            pass
+
+        container = DIContainer()
+        container.register_dependency(Dependency(A))
+
+        first = container[A]
+        second = container.resolve_dependency(A)
+
+        self.assertIs(first, second)
+
+    def test_reinitialize_dependency_replaces_cached_singleton(self) -> None:
+        class A:
+            pass
+
+        container = DIContainer()
+        container.register_dependency(Dependency(A))
+
+        first = container[A]
+        second = container.reinitialize_dependency(A)
+
+        self.assertIsNot(first, second)
+        self.assertIs(second, container[A])
+
+    def test_override_unknown_dependency_raises(self) -> None:
+        class A:
+            pass
+
+        container = DIContainer()
+
+        with self.assertRaises(ValueError) as exc:
+            container.override_dependency(Dependency(A))
+
+        self.assertIn("überschrieben", exc.exception.args[0])
+
+    def test_replace_unknown_dependency_instance_raises(self) -> None:
+        class A:
+            pass
+
+        container = DIContainer()
+
+        with self.assertRaises(TypeError) as exc:
+            container.replace_dependency_instance(DependencyInstance(A()))
+
+        self.assertIn("cannot be replaced", exc.exception.args[0])
+
+    def test_dependency_kwargs_override_constructor_arguments(self) -> None:
+        class A:
+            def __init__(self, value: str, amount: int = 3) -> None:
+                self.value = value
+                self.amount = amount
+
+        container = DIContainer()
+        container.register_dependency(Dependency(A, value="configured"))
+
+        instance = container[A]
+
+        self.assertEqual(instance.value, "configured")
+        self.assertEqual(instance.amount, 3)
+
+    def test_missing_annotation_raises(self) -> None:
+        class A:
+            def __init__(self, value) -> None:
+                self.value = value
+
+        container = DIContainer()
+        container.register_dependency(Dependency(A))
+
+        with self.assertRaises(ValueError) as exc:
+            _ = container[A]
+
+        self.assertIn("Missing type annotation", exc.exception.args[0])
+
+    def test_create_test_instance_injects_mock_for_missing_dependency(self) -> None:
+        class Collaborator:
+            def call(self) -> str:
+                return "value"
+
+        class Service:
+            def __init__(self, collaborator: Collaborator) -> None:
+                self.collaborator = collaborator
+
+        container = TestDIContainer()
+
+        service = container.create_test_instance(dependency_type=Service)
+
+        self.assertIsInstance(service, Service)
+        self.assertIsInstance(service.collaborator, MagicMock)
+        self.assertIs(service, container[Service])
+
+    def test_post_init_wrap_applies_wrapper(self) -> None:
+        container = DIContainer()
+        container.register_dependencies(
+            [Dependency(PostInitWrapper), Dependency(PostInitTestClass)]
+        )
+
+        service = container[PostInitTestClass]
+        _ = container[PostInitWrapper]
+        container.apply_post_init_wrappers()
+
+        self.assertEqual(service.value(), "wrapped:raw")
+
+    def test_registered_base_type_is_not_used_for_subclass_request(self) -> None:
+        class Base:
+            pass
+
+        class Child(Base):
+            pass
+
+        container = DIContainer()
+        container.register_dependency(Dependency(Base))
+
+        with self.assertRaises(ValueError) as exc:
+            _ = container[Child]
+
+        self.assertIn("not found in registry", exc.exception.args[0])
+
+    def test_unregistered_base_settings_type_is_not_resolved_from_another(self) -> None:
+        class PrimarySettings(BaseSettings):
+            api_url: str = "https://primary.test"
+
+        class SecondarySettings(BaseSettings):
+            api_url: str = "https://secondary.test"
+
+        container = DIContainer()
+        container.register_dependency(Dependency(PrimarySettings))
+
+        with self.assertRaises(ValueError) as exc:
+            _ = container[SecondarySettings]
+
+        self.assertIn("not found in registry", exc.exception.args[0])

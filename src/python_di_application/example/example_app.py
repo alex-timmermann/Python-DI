@@ -7,7 +7,6 @@ from python_di_application.example.services.service_b import ServiceB
 
 
 class ExampleApp(Application):
-
     def __init__(self, service_a: ServiceA) -> None:
         self._service_a = service_a
 
@@ -16,19 +15,17 @@ class ExampleApp(Application):
         di = DIContainer()
         di.register_dependencies(
             dependencies_types_with_kwargs=[
-                Dependency(ServiceA),
-                Dependency(ServiceB),
-                Dependency(ConfigB),
-                Dependency(cls)
+                Dependency(dependency_type=ServiceA),
+                Dependency(dependency_type=ServiceB),
+                Dependency(dependency_type=ConfigB),
+                Dependency(dependency_type=cls),
             ]
         )
         return di
 
-
     @classmethod
-    def _build(cls, container: DIContainer) -> tuple[DIContainer, 'ExampleApp']:
+    def _build(cls, container: DIContainer) -> tuple[DIContainer, "ExampleApp"]:
         return container, container.resolve_dependency(dependency_type=cls)
-
 
     def run(self):
         self._service_a.do_random()
